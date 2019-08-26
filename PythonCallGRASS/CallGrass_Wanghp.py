@@ -19,7 +19,7 @@ import grass.script as gscript
 import grass.script.setup as gsetup
 
 grass7bin = r'C:\Program Files\GRASS GIS 7.6\grass76.bat'
-myfile = r'H:\pycharm\Grass\Code\clip7.tif'
+myfile = r'J:\GRASS\Dem30_UTM.tif'    #r'H:\pycharm\Grass\Code\clip7.tif'
 
 # Set GISBASE environment variable
 gisbase = os.environ['GISBASE'] = 'C:\Program Files\GRASS GIS 7.6'
@@ -30,7 +30,7 @@ home = os.path.expanduser("C:\Program Files\GRASS GIS 7.6")
 os.environ['PATH'] += os.pathsep + os.path.join(home, 'scripts')
 os.environ['PATH'] += os.pathsep + os.path.join(home, 'bin')
 # Set GISDBASE environment variable
-gisdb = os.path.join(r'C:\Users\HP\Documents', 'grassdata')
+gisdb = r'J:/GRASS'#os.path.join(r'J:\\', 'GRASS')
 location = 'newLocation1'
 mapset = 'PERMANENT'
 
@@ -40,7 +40,6 @@ sys.path.append(gpydir)
 
 # query GRASS 7 itself for its GISBASE
 startcmd = [grass7bin, '--config', 'path']
- 
 p = subprocess.Popen(startcmd, shell=True,
                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 out, err = p.communicate()
@@ -82,7 +81,7 @@ gsetup.init(gisbase,gisdb, location, mapset)
 gscript.message('Current GRASS GIS 7 environment:')
 print gscript.gisenv()
 
-def test_grass(inputdata, outputdata):
+def execute(inputdata, outputdata):
     try:
         #input raster map
         output_result1=''.join(random.sample(string.letters,8))
@@ -100,10 +99,44 @@ def test_grass(inputdata, outputdata):
         gscript.run_command("r.out.gdal",overwrite=True,input=output_result4,output=outputdata,format="GTiff")
     finally:
         #delete temporary Location
+        shutil.rmtree(os.path.join(gisdb, location))
+
+def test_slope_aspect(inputdata):
+    try:
+        #input raster map
+        output_result1=''.join(random.sample(string.letters,8))
+        gscript.run_command("r.in.gdal", input=inputdata, output=output_result1)
+
+        #slope aspect
+        output_result2=''.join(random.sample(string.letters,8))
+        aspect = output_result1 + '_aspect'
+        slope = output_result1 + '_slope'
+        pcurvature = output_result1 + '_pcurvature'
+        tcurvature = output_result1 + '_tcurvature'
+
+        gscript.run_command('r.slope.aspect', overwrite=True,
+                            format='degree', precision='FCELL',
+                            elevation=output_result1, aspect=aspect,
+                            slope=slope, pcurvature=pcurvature, tcurvature=tcurvature)
+        #output raster map
+        [path_dir, path_ext] = os.path.splitext(inputdata)
+        gscript.run_command("r.out.gdal",overwrite=True, input=aspect, output=path_dir+"_aspect"+path_ext,format="GTiff")
+        gscript.run_command("r.out.gdal",overwrite=True, input=slope, output=path_dir+"_slope"+path_ext,format="GTiff")
+        gscript.run_command("r.out.gdal",overwrite=True, input=pcurvature, output=path_dir+"_pcurvature"+path_ext,format="GTiff")
+        gscript.run_command("r.out.gdal",overwrite=True, input=tcurvature, output=path_dir+"_tcurvature"+path_ext,format="GTiff")
+    finally:
+        #delete temporary Location
         shutil.rmtree(os.path.join(gisdb , location))
 
-
-Inputdata = r'H:\pycharm\Grass\Code\clip7.tif'
+#Inputdata = r'H:\pycharm\Grass\Code\clip7.tif'
+Inputdata = r'J:\GRASS\Dem30_UTM.tif'
 Outputdata = r'H:\pycharm\Grass\Code\clip7_output.tif'
+test_slope_aspect(Inputdata)
+#execute(Inputdata, Outputdata)
 
-test_grass(Inputdata, Outputdata)
+# PyGRASS Steps
+    # 1. Open Mapsets or create temporal mapsets
+    # 2. Input dem raster to mapsets opened, using script "r.in.gdal"
+    # 3. run slope_aspect and geomorphon modules using "r.slope.aspect" and "r.geomorphon"
+    # 4. output raster to file, using "r.out.gdal"
+    # 5. finally, remove temporal files using "g.remove"
